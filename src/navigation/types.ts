@@ -1,24 +1,24 @@
 export type AuthStackParamList = {
   Welcome: undefined;
-  Register: undefined;
   Login: undefined;
   OTPVerify: { mobile: string; isNewUser?: boolean };
+  Register: { mobile?: string } | undefined;
 };
 
 export type MainTabParamList = {
   HomeTab: undefined;
+  BookingsTab: undefined;
   ExploreTab: {
+    tab?: 'bikes' | 'hostels';
     startDate?: string;
     endDate?: string;
     startTime?: string;
     endTime?: string;
     location?: string;
-    tab?: 'bikes' | 'hostels';
     checkIn?: string;
     checkOut?: string;
     people?: number;
   } | undefined;
-  BookingsTab: undefined;
   ProfileTab: undefined;
 };
 
@@ -40,9 +40,18 @@ export type MainStackParamList = {
   Cart: undefined;
   Checkout: undefined;
   PaymentProcessing: {
-    bookingId: string;
+    // For cart checkout — Razorpay order pre-created by /bookings/cart
+    razorpayOrderId?: string;
+    razorpayAmount?: number;
+    razorpayCurrency?: string;
     paymentGroupId?: string;
+    // For individual booking payment — order created by /payments/booking/:id
+    bookingId?: string;
     paymentType: 'partial' | 'full' | 'remaining';
+    // Guest details for Razorpay prefill
+    guestName?: string;
+    guestEmail?: string;
+    guestPhone?: string;
   };
   BookingSuccess: { paymentGroupId: string };
   BookingDetail: { bookingId: string };
