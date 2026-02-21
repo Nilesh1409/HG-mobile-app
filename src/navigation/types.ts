@@ -8,22 +8,21 @@ export type AuthStackParamList = {
 export type MainTabParamList = {
   HomeTab: undefined;
   BookingsTab: undefined;
-  ExploreTab: {
-    tab?: 'bikes' | 'hostels';
-    startDate?: string;
-    endDate?: string;
-    startTime?: string;
-    endTime?: string;
-    location?: string;
-    checkIn?: string;
-    checkOut?: string;
-    people?: number;
-  } | undefined;
+  HostelTab: undefined;
+  ReferEarnTab: undefined;
   ProfileTab: undefined;
 };
 
 export type MainStackParamList = {
   MainTabs: undefined;
+  // Bike search results (pushed from HomeTab search)
+  BikeSearch: {
+    startDate: string;
+    endDate: string;
+    startTime: string;
+    endTime: string;
+    location?: string;
+  };
   BikeDetail: {
     bikeId: string;
     startDate?: string;
@@ -40,15 +39,12 @@ export type MainStackParamList = {
   Cart: undefined;
   Checkout: undefined;
   PaymentProcessing: {
-    // For cart checkout — Razorpay order pre-created by /bookings/cart
     razorpayOrderId?: string;
     razorpayAmount?: number;
     razorpayCurrency?: string;
     paymentGroupId?: string;
-    // For individual booking payment — order created by /payments/booking/:id
     bookingId?: string;
     paymentType: 'partial' | 'full' | 'remaining';
-    // Guest details for Razorpay prefill
     guestName?: string;
     guestEmail?: string;
     guestPhone?: string;
@@ -61,4 +57,16 @@ export type MainStackParamList = {
   Referral: undefined;
   EditProfile: undefined;
   Search: undefined;
+  // Legacy (keep for backward compat)
+  ExploreTab: {
+    tab?: 'bikes' | 'hostels';
+    startDate?: string;
+    endDate?: string;
+    startTime?: string;
+    endTime?: string;
+    location?: string;
+    checkIn?: string;
+    checkOut?: string;
+    people?: number;
+  };
 };

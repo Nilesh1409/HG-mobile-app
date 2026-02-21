@@ -6,10 +6,10 @@ import type { MainTabParamList } from './types';
 import { useCartStore } from '../stores/cartStore';
 
 import HomeScreen from '../screens/home/HomeScreen';
-import ExploreScreen from '../screens/explore/ExploreScreen';
 import BookingsListScreen from '../screens/bookings/BookingsListScreen';
-import ProfileScreen from '../screens/profile/ProfileScreen';
+import ExploreScreen from '../screens/explore/ExploreScreen';
 import ReferralScreen from '../screens/profile/ReferralScreen';
+import ProfileScreen from '../screens/profile/ProfileScreen';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -53,7 +53,7 @@ export default function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="ExploreTab"
+        name="HostelTab"
         component={ExploreScreen}
         options={{
           title: 'Hostel',
@@ -63,20 +63,30 @@ export default function MainTabs() {
         }}
       />
       <Tab.Screen
+        name="ReferEarnTab"
+        component={ReferralScreen}
+        options={{
+          title: 'Refer&Earn',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="gift-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
         name="ProfileTab"
         component={ProfileScreen}
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size }) => (
-            <View>
+            <View style={{ position: 'relative' }}>
               <Ionicons name="person-outline" size={size} color={color} />
               {itemCount > 0 && (
                 <View style={{
                   position: 'absolute', top: -4, right: -8,
                   backgroundColor: '#f47b20', borderRadius: 8,
-                  minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center',
+                  minWidth: 15, height: 15, alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Text style={{ color: '#fff', fontSize: 9, fontWeight: 'bold' }}>
+                  <Text style={{ color: '#fff', fontSize: 8, fontWeight: '800' }}>
                     {itemCount > 9 ? '9+' : itemCount}
                   </Text>
                 </View>

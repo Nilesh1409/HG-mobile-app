@@ -67,8 +67,7 @@ export default function HomeScreen() {
   });
 
   const handleSearch = () => {
-    navigation.navigate('ExploreTab', {
-      tab: 'bikes',
+    navigation.navigate('BikeSearch', {
       startDate: formatDateParam(pickup),
       endDate: formatDateParam(dropoff),
       startTime: formatTimeParam(pickup),

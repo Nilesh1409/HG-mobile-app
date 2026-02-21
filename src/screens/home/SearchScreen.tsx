@@ -48,25 +48,18 @@ export default function SearchScreen() {
   const [showEndDate, setShowEndDate] = useState(false);
 
   const handleSearch = () => {
-    const params =
-      tab === 'bikes'
-        ? {
-            tab: 'bikes' as const,
-            startDate: formatDate(startDate),
-            endDate: formatDate(endDate),
-            startTime,
-            endTime,
-            location,
-          }
-        : {
-            tab: 'hostels' as const,
-            checkIn: formatDate(startDate),
-            checkOut: formatDate(endDate),
-            people: parseInt(people, 10) || 1,
-            location,
-          };
-    // @ts-expect-error nested tab navigator navigation
-    navigation.navigate('ExploreTab', params);
+    if (tab === 'bikes') {
+      navigation.navigate('BikeSearch', {
+        startDate: formatDate(startDate),
+        endDate: formatDate(endDate),
+        startTime,
+        endTime,
+        location,
+      });
+    } else {
+      // Navigate to hostel tab
+      navigation.navigate('MainTabs' as never);
+    }
   };
 
   return (

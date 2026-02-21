@@ -4,9 +4,21 @@ export interface CartBikeItem {
   _id: string;
   bike: {
     _id: string;
-    name: string;
+    id?: string;
+    title: string;
+    name?: string; // fallback
     brand: string;
     images: string[];
+    availableQuantity?: number;
+    pricePerDay?: {
+      weekday?: {
+        limitedKm?: { kmLimit?: number };
+        unlimited?: { price?: number };
+      };
+      weekend?: {
+        limitedKm?: { kmLimit?: number };
+      };
+    };
   };
   quantity: number;
   kmOption: 'limited' | 'unlimited';
@@ -29,6 +41,7 @@ export interface CartHostelItem {
   roomType: RoomType;
   mealOption: MealOption;
   quantity: number;
+  numberOfNights?: number;
   checkIn: string;
   checkOut: string;
   people: number;
@@ -36,23 +49,59 @@ export interface CartHostelItem {
   totalPrice: number;
 }
 
-export interface CartPriceBreakdown {
+export interface CartPricing {
   subtotal: number;
-  discount: number;
+  bulkDiscount: {
+    amount: number;
+    percentage: number;
+  };
+  surgeMultiplier?: number;
+  extraCharges?: number;
   gst: number;
-  helmetCharges: number;
-  totalAmount: number;
+  gstPercentage: number;
+  total: number;
+  // legacy field support
+  totalAmount?: number;
+  helmetCharges?: number;
+  discount?: number;
+}
+
+export interface CartHelmetDetails {
+  quantity: number;
+  charges: number;
+  message?: string;
+}
+
+export interface CartBikeDates {
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface CartHostelDates {
+  checkIn: string;
+  checkOut: string;
 }
 
 export interface Cart {
   _id: string;
-  user: string;
+  userId?: string;
   bikeItems: CartBikeItem[];
   hostelItems: CartHostelItem[];
-  helmetQuantity: number;
-  helmetCharges: number;
-  priceBreakdown: CartPriceBreakdown;
-  updatedAt: string;
+  helmetDetails?: CartHelmetDetails;
+  helmetQuantity?: number;     // legacy
+  helmetCharges?: number;      // legacy
+  bikeDates?: CartBikeDates;
+  hostelDates?: CartHostelDates;
+  pricing?: CartPricing;
+  priceBreakdown?: {            // legacy
+    subtotal: number;
+    discount: number;
+    gst: number;
+    helmetCharges: number;
+    totalAmount: number;
+  };
 }
 
 export interface AddBikeToCartRequest {
@@ -74,3 +123,20 @@ export interface AddHostelToCartRequest {
   checkOut: string;
   people: number;
 }
+
+// Helper: get cart total from either pricing.total or priceBreakdown.totalAmount
+export const getCartTotal = (cart: Cart): number =>
+  cart.pricing?.total ?? cart.pricing?.totalAmount ?? cart.priceBreakdown?.totalAmount ?? 0;
+
+// Helper: get helmet quantity
+export const getHelmetQty = (cart: Cart): number =>
+  cart.helmetDetails?.quantity ?? cart.helmetQuantity ?? 0;
+
+// Helper: get km limit label
+export const getKmLabel = (item: CartBikeItem): string => {
+  if (item.kmOption === 'unlimited') return 'Unlimited KM';
+  const weekdayLimit = item.bike?.pricePerDay?.weekday?.limitedKm?.kmLimit;
+  const weekendLimit = item.bike?.pricePerDay?.weekend?.limitedKm?.kmLimit;
+  const limit = weekdayLimit ?? weekendLimit ?? 0;
+  return limit > 0 ? `${limit} KM Limited` : '100 KM Limited';
+};
