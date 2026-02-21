@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { MainStackParamList } from '../../navigation/types';
+import { Ionicons } from '@expo/vector-icons';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import ScreenHeader from '../../components/common/ScreenHeader';
@@ -31,7 +32,7 @@ const TIME_SLOTS = Array.from({ length: 48 }, (_, i) => {
 export default function SearchScreen() {
   const navigation = useNavigation<Nav>();
   const [tab, setTab] = useState<'bikes' | 'hostels'>('bikes');
-  const [location, setLocation] = useState('');
+  const location = 'Chikkamagaluru';
 
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(() => {
@@ -87,12 +88,11 @@ export default function SearchScreen() {
           ))}
         </View>
 
-        <Input
-          label="Location"
-          placeholder="Goa, Panjim, Calangute..."
-          value={location}
-          onChangeText={setLocation}
-        />
+        {/* Location always preset */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16, backgroundColor: '#f9f9f9', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#e5e5e5' }}>
+          <Ionicons name="location" size={16} color="#f47b20" />
+          <Text style={{ fontSize: 14, color: '#1a1a1a', fontWeight: '500' }}>Chikkamagaluru</Text>
+        </View>
 
         {/* Start Date */}
         <View style={styles.fieldRow}>

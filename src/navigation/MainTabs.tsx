@@ -9,6 +9,7 @@ import HomeScreen from '../screens/home/HomeScreen';
 import ExploreScreen from '../screens/explore/ExploreScreen';
 import BookingsListScreen from '../screens/bookings/BookingsListScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
+import ReferralScreen from '../screens/profile/ReferralScreen';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -21,26 +22,23 @@ export default function MainTabs() {
         headerShown: false,
         tabBarActiveTintColor: '#f47b20',
         tabBarInactiveTintColor: '#999999',
-        tabBarStyle: { backgroundColor: '#ffffff', borderTopColor: '#e5e5e5' },
+        tabBarStyle: {
+          backgroundColor: '#ffffff',
+          borderTopColor: '#e5e5e5',
+          height: 56,
+          paddingBottom: 6,
+          paddingTop: 4,
+        },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
       }}
     >
       <Tab.Screen
         name="HomeTab"
         component={HomeScreen}
         options={{
-          title: 'Home',
+          title: 'Bike',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="ExploreTab"
-        component={ExploreScreen}
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search" size={size} color={color} />
+            <Ionicons name="bicycle" size={size} color={color} />
           ),
         }}
       />
@@ -50,7 +48,17 @@ export default function MainTabs() {
         options={{
           title: 'Bookings',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar" size={size} color={color} />
+            <Ionicons name="calendar-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="ExploreTab"
+        component={ExploreScreen}
+        options={{
+          title: 'Hostel',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bed-outline" size={size} color={color} />
           ),
         }}
       />
@@ -61,22 +69,14 @@ export default function MainTabs() {
           title: 'Profile',
           tabBarIcon: ({ color, size }) => (
             <View>
-              <Ionicons name="person" size={size} color={color} />
+              <Ionicons name="person-outline" size={size} color={color} />
               {itemCount > 0 && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: -4,
-                    right: -8,
-                    backgroundColor: '#f47b20',
-                    borderRadius: 8,
-                    minWidth: 16,
-                    height: 16,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>
+                <View style={{
+                  position: 'absolute', top: -4, right: -8,
+                  backgroundColor: '#f47b20', borderRadius: 8,
+                  minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 9, fontWeight: 'bold' }}>
                     {itemCount > 9 ? '9+' : itemCount}
                   </Text>
                 </View>

@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,6 +21,7 @@ import Button from '../../components/common/Button';
 import api from '../../lib/api';
 
 type Nav = StackNavigationProp<AuthStackParamList, 'Register'>;
+type Route = RouteProp<AuthStackParamList, 'Register'>;
 
 const schema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -33,17 +34,22 @@ type FormData = z.infer<typeof schema>;
 
 export default function RegisterScreen() {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<Route>();
+  const prefillMobile = (route.params as any)?.mobile ?? '';
+
   const {
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
-    getValues,
-  } = useForm<FormData>({ resolver: zodResolver(schema) });
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { mobile: prefillMobile },
+  });
 
   const onSubmit = async (data: FormData) => {
     try {
       await api.post('/auth/register', data);
-      Toast.show({ type: 'success', text1: 'Registered!', text2: 'OTP sent to your mobile' });
+      Toast.show({ type: 'success', text1: 'Account Created!', text2: 'OTP sent to your mobile' });
       navigation.navigate('OTPVerify', { mobile: data.mobile, isNewUser: true });
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? 'Registration failed. Please try again.';
@@ -58,20 +64,23 @@ export default function RegisterScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
+          {/* Logo */}
+          <View style={styles.logoRow}>
+            <View style={styles.logoBox}>
+              <Text style={styles.logoBoxText}>H</Text>
+            </View>
+          </View>
 
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join HappyGo and start exploring</Text>
+          <Text style={styles.subtitle}>Join thousands of happy travelers</Text>
 
           <Controller
             control={control}
             name="name"
             render={({ field: { onChange, value } }) => (
               <Input
-                label="Full Name"
-                placeholder="Rahul Sharma"
+                label="Full Name *"
+                placeholder="Enter your full name"
                 onChangeText={onChange}
                 value={value}
                 error={errors.name?.message}
@@ -83,8 +92,8 @@ export default function RegisterScreen() {
             name="email"
             render={({ field: { onChange, value } }) => (
               <Input
-                label="Email"
-                placeholder="rahul@example.com"
+                label="Email Address *"
+                placeholder="Enter your email"
                 onChangeText={onChange}
                 value={value}
                 keyboardType="email-address"
@@ -98,7 +107,7 @@ export default function RegisterScreen() {
             name="mobile"
             render={({ field: { onChange, value } }) => (
               <Input
-                label="Mobile Number"
+                label="Mobile Number *"
                 placeholder="9876543210"
                 onChangeText={onChange}
                 value={value}
@@ -114,28 +123,29 @@ export default function RegisterScreen() {
             render={({ field: { onChange, value } }) => (
               <Input
                 label="Referral Code (Optional)"
-                placeholder="HAPPY100"
+                placeholder="Enter referral code"
                 onChangeText={onChange}
                 value={value}
                 autoCapitalize="characters"
                 error={errors.referralCode?.message}
+                hint="Have a referral code? Enter it to get ₹500 off your first booking!"
               />
             )}
           />
 
           <Button
-            title="Register & Get OTP"
+            title="Create Account & Send OTP"
             onPress={handleSubmit(onSubmit)}
             loading={isSubmitting}
             style={styles.submitBtn}
           />
 
-          <View style={styles.loginRow}>
-            <Text style={styles.loginText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.loginLink}>Login</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.backRow}
+            onPress={() => navigation.navigate('Login')}
+          >
+            <Text style={styles.backText}>← Back to Login</Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -145,13 +155,16 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#ffffff' },
   flex: { flex: 1 },
-  scroll: { padding: 24, paddingBottom: 40 },
-  backBtn: { marginBottom: 24 },
-  backText: { color: '#f47b20', fontSize: 15, fontWeight: '500' },
-  title: { fontSize: 28, fontWeight: '700', color: '#1a1a1a', marginBottom: 8 },
-  subtitle: { fontSize: 15, color: '#666666', marginBottom: 28 },
-  submitBtn: { marginTop: 8, marginBottom: 20 },
-  loginRow: { flexDirection: 'row', justifyContent: 'center' },
-  loginText: { color: '#666666', fontSize: 14 },
-  loginLink: { color: '#f47b20', fontSize: 14, fontWeight: '600' },
+  scroll: { padding: 24, paddingTop: 32, paddingBottom: 40 },
+  logoRow: { alignItems: 'center', marginBottom: 16 },
+  logoBox: {
+    width: 52, height: 52, borderRadius: 12,
+    backgroundColor: '#f47b20', alignItems: 'center', justifyContent: 'center',
+  },
+  logoBoxText: { color: '#fff', fontWeight: '800', fontSize: 26 },
+  title: { fontSize: 22, fontWeight: '700', color: '#1a1a1a', textAlign: 'center', marginBottom: 4 },
+  subtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 24 },
+  submitBtn: { marginTop: 8, marginBottom: 16 },
+  backRow: { alignItems: 'center' },
+  backText: { color: '#f47b20', fontSize: 14, fontWeight: '500' },
 });
