@@ -10,7 +10,7 @@
       "android": { "buildType": "apk" }
     },
     "production": {
-      "android": { "buildType": "aab" },
+      "android": { "buildType": "app-bundle" },
       "ios": { "credentialsSource": "remote" }
     }
   },
