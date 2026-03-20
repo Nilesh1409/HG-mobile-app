@@ -149,7 +149,7 @@ export default function ProfileScreen() {
           {[
             { label: 'Edit Profile', icon: 'person-outline', onPress: () => navigation.navigate('EditProfile') },
             { label: 'My Referrals', icon: 'gift-outline', onPress: () => navigation.navigate('Referral') },
-            { label: 'Cart', icon: 'cart-outline', onPress: () => navigation.navigate('Cart') },
+            { label: 'Cart', icon: 'cart-outline', onPress: () => (navigation as any).navigate('HomeTab', { screen: 'Cart' }) },
           ].map((item) => (
             <TouchableOpacity
               key={item.label}

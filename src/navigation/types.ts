@@ -15,6 +15,10 @@ export type MainTabParamList = {
 
 export type MainStackParamList = {
   MainTabs: undefined;
+  // Sub-stack root screens (used by per-tab nested stacks)
+  Home: undefined;
+  BookingsList: undefined;
+  Profile: undefined;
   // Bike search results (pushed from HomeTab search)
   BikeSearch: {
     startDate: string;
@@ -30,11 +34,26 @@ export type MainStackParamList = {
     startTime?: string;
     endTime?: string;
   };
+  // Hostel flow
+  HostelLanding: undefined;
+  HostelSearch: {
+    checkIn: string;
+    checkOut: string;
+    location: string;
+    stayType: 'hostel' | 'workstation';
+  };
+  HostelBooking: {
+    hostelId: string;
+    checkIn: string;
+    checkOut: string;
+    stayType: 'hostel' | 'workstation';
+  };
   HostelDetail: {
     hostelId: string;
     checkIn?: string;
     checkOut?: string;
     people?: number;
+    stayType?: 'hostel' | 'workstation';
   };
   Cart: undefined;
   Checkout: undefined;
@@ -48,6 +67,7 @@ export type MainStackParamList = {
     guestName?: string;
     guestEmail?: string;
     guestPhone?: string;
+    payNowRupees?: number;
   };
   BookingSuccess: { paymentGroupId: string };
   BookingDetail: { bookingId: string };

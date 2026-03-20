@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Image,
-  FlatList, TouchableOpacity, Dimensions, ActivityIndicator,
+  TouchableOpacity, Dimensions, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
@@ -85,15 +85,16 @@ export default function BikeDetailScreen() {
       <ScreenHeader title={bike.title} />
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Gallery */}
-        <FlatList
-          data={bike.images?.length ? bike.images : ['https://via.placeholder.com/400x250']}
-          keyExtractor={(_, i) => String(i)}
-          horizontal pagingEnabled showsHorizontalScrollIndicator={false}
+        <ScrollView
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
           style={styles.gallery}
-          renderItem={({ item }) => (
-            <Image source={{ uri: item }} style={styles.galleryImage} resizeMode="contain" />
-          )}
-        />
+        >
+          {(bike.images?.length ? bike.images : ['https://via.placeholder.com/400x250']).map((item, i) => (
+            <Image key={i} source={{ uri: item }} style={styles.galleryImage} resizeMode="contain" />
+          ))}
+        </ScrollView>
 
         <View style={styles.content}>
           {/* Title */}

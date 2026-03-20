@@ -1,8 +1,8 @@
 import type { RoomType, MealOption } from './hostel.types';
 
-export type BookingType = 'bike' | 'hostel';
+export type BookingType = 'bike' | 'hostel' | 'combined';
 export type BookingStatus = 'pending' | 'confirmed' | 'active' | 'completed' | 'cancelled';
-export type PaymentStatus = 'unpaid' | 'partial' | 'paid';
+export type PaymentStatus = 'unpaid' | 'partial' | 'paid' | 'pending';
 
 export interface GuestDetails {
   name: string;
@@ -23,10 +23,19 @@ export interface BookingPriceDetails {
   totalAmount: number;
 }
 
+export interface PaymentDetails {
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  partialPaymentPercentage?: number;
+}
+
 export interface BikeBookingItem {
   bike: {
     _id: string;
-    name: string;
+    /** API returns `title`; older code may use `name` */
+    title?: string;
+    name?: string;
     brand: string;
     images: string[];
   };
@@ -34,13 +43,23 @@ export interface BikeBookingItem {
   kmOption: 'limited' | 'unlimited';
   pricePerUnit: number;
   totalPrice: number;
+  additionalKmPrice?: number;
+}
+
+export interface HostelObject {
+  _id: string;
+  name: string;
+  images: string[];
+  location: string;
 }
 
 export interface Booking {
   _id: string;
   user: string;
   bookingType: BookingType;
-  status: BookingStatus;
+  /** API returns `bookingStatus`; `status` kept for backward compat */
+  bookingStatus?: BookingStatus;
+  status?: BookingStatus;
   paymentStatus: PaymentStatus;
   paymentGroupId?: string;
 
@@ -51,32 +70,56 @@ export interface Booking {
   endTime?: string;
   helmetQuantity?: number;
   priceDetails?: BookingPriceDetails;
+  /** Actual payment amounts from API */
+  paymentDetails?: PaymentDetails;
 
-  hostelId?: {
-    _id: string;
-    name: string;
-    images: string[];
-    location: string;
-  };
+  /** API returns `hostel` (not `hostelId`) */
+  hostel?: HostelObject;
+  /** Legacy alias kept for compatibility */
+  hostelId?: HostelObject;
   roomType?: RoomType;
   mealOption?: MealOption;
   checkIn?: string;
   checkOut?: string;
+  numberOfBeds?: number;
+  numberOfNights?: number;
   people?: number;
 
   guestDetails?: GuestDetails;
   specialRequests?: string;
 
-  paidAmount: number;
-  totalAmount: number;
-  remainingAmount: number;
+  paidAmount?: number;
+  totalAmount?: number;
+  remainingAmount?: number;
 
-  aadhaarVerified: boolean;
-  dlVerified: boolean;
+  aadhaarVerified?: boolean;
+  dlVerified?: boolean;
 
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
+
+/** Combined booking wrapping two individual bookings (hostel + bike) */
+export interface CombinedBooking {
+  isCombined: true;
+  bookingType: 'combined';
+  paymentGroupId: string;
+  bookings: Booking[];
+  combinedDetails: {
+    totalAmount: number;
+    paidAmount: number;
+    remainingAmount: number;
+    bookingCount: number;
+    types: BookingType[];
+  };
+  paymentStatus: PaymentStatus;
+  bookingStatus: BookingStatus;
+  createdAt: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export type AnyBooking = Booking | CombinedBooking;
 
 export interface CartCheckoutRequest {
   guestDetails: GuestDetails;

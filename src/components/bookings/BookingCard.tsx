@@ -32,7 +32,7 @@ export default function BookingCard({ booking, onPress }: BookingCardProps) {
         <Text style={styles.title} numberOfLines={1}>{title}</Text>
         <Text style={styles.date}>{dateRange}</Text>
         <View style={styles.row}>
-          <Badge label={booking.status} variant={booking.status} />
+          <Badge label={booking.status ?? booking.bookingStatus ?? 'pending'} variant={(booking.status ?? booking.bookingStatus ?? 'pending')} />
           <Text style={styles.amount}>₹{booking.totalAmount}</Text>
         </View>
       </View>

@@ -2,6 +2,7 @@
   "expo": {
     "name": "HappyGo Rentals",
     "slug": "happygo-rentals",
+    "scheme": "happygorentals",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -76,10 +77,16 @@
               "host": "happygorentals.com"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "happygorentals"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ]
     },

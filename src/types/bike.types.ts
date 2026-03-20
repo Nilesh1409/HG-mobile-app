@@ -68,6 +68,9 @@ export interface Bike {
     startTime: string;
     endTime: string;
   };
+  /** Returned when availableQuantity === 0; format "YYYY-MM-DD HH:mm" */
+  nextAvailable?: string;
+  nextAvailableDetails?: { date: string; time: string };
   ratings?: number;
   numReviews?: number;
   status?: string;

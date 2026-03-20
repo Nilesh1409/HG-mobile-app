@@ -38,6 +38,7 @@ export default function PaymentProcessingScreen() {
     guestName,
     guestEmail,
     guestPhone,
+    payNowRupees,
   } = route.params;
 
   const { user } = useAuthStore();
@@ -57,37 +58,42 @@ export default function PaymentProcessingScreen() {
 
   const initPayment = async () => {
     try {
+      let data: { orderId: string; amount: number; currency: string };
+
       if (razorpayOrderId && razorpayAmount) {
         // Order was pre-created by /bookings/cart — use it directly
-        setOrderData({
+        data = {
           orderId: razorpayOrderId,
           amount: razorpayAmount,
           currency: razorpayCurrency ?? 'INR',
-        });
-        setState('ready');
+        };
       } else if (bookingId) {
         // Individual booking payment — create order now
         const res = await api.post<{ success: boolean; data: { id: string; amount: number; currency: string } }>(
           `/payments/booking/${bookingId}`,
           { paymentType }
         );
-        setOrderData({
+        data = {
           orderId: res.data.data.id,
           amount: res.data.data.amount,
           currency: res.data.data.currency ?? 'INR',
-        });
-        setState('ready');
+        };
       } else {
         throw new Error('No order or booking ID provided');
       }
+
+      setOrderData(data);
+      setState('ready');
+      // Open Razorpay immediately on first load — use data directly to avoid
+      // stale-closure on orderData state which hasn't updated yet.
+      openRazorpayWithData(data);
     } catch (err: any) {
       setState('error');
       setErrorMsg(err?.response?.data?.message ?? err?.message ?? 'Failed to initialize payment');
     }
   };
 
-  const openRazorpay = async () => {
-    if (!orderData) return;
+  const openRazorpayWithData = async (data: { orderId: string; amount: number; currency: string }) => {
     setState('processing');
 
     const prefillName = guestName ?? user?.name ?? '';
@@ -97,10 +103,10 @@ export default function PaymentProcessingScreen() {
     const options = {
       description: 'Happy Go Rentals Booking',
       image: 'https://happygorentals.com/logo.png',
-      currency: orderData.currency,
+      currency: data.currency,
       key: process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID ?? '',
-      amount: orderData.amount,
-      order_id: orderData.orderId,
+      amount: data.amount,
+      order_id: data.orderId,
       name: 'Happy Go Rentals',
       prefill: {
         email: prefillEmail,
@@ -111,11 +117,11 @@ export default function PaymentProcessingScreen() {
     };
 
     try {
-      const data = await RazorpayCheckout.open(options);
-      await verifyPayment(data);
+      const result = await RazorpayCheckout.open(options);
+      await verifyPayment(result);
     } catch (error: any) {
       if (error?.code === 0) {
-        // User cancelled
+        // User cancelled — go back to ready state so they can tap Pay again manually
         Toast.show({ type: 'info', text1: 'Payment Cancelled' });
         setState('ready');
       } else {
@@ -123,6 +129,11 @@ export default function PaymentProcessingScreen() {
         setErrorMsg(error?.description ?? 'Payment failed. Please try again.');
       }
     }
+  };
+
+  // Called when user taps the "Pay" button after a cancel
+  const openRazorpay = () => {
+    if (orderData) openRazorpayWithData(orderData);
   };
 
   const verifyPayment = async (data: {
@@ -155,8 +166,12 @@ export default function PaymentProcessingScreen() {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
       setState('success');
 
-      navigation.replace('BookingSuccess', {
-        paymentGroupId: paymentGroupId ?? bookingId ?? '',
+      navigation.reset({
+        index: 1,
+        routes: [
+          { name: 'MainTabs' },
+          { name: 'BookingSuccess', params: { paymentGroupId: paymentGroupId ?? bookingId ?? '' } },
+        ],
       });
     } catch (err: any) {
       setState('error');
@@ -202,34 +217,63 @@ export default function PaymentProcessingScreen() {
     );
   }
 
-  // state === 'ready' — show booking summary + Pay Now button
-  const amountInRupees = orderData ? Math.round(orderData.amount / 100) : 0;
+  // state === 'ready' — show payment option + summary + Pay Now button
+  const amountInRupees = payNowRupees ?? (orderData ? Math.round(orderData.amount / 100) : 0);
+
+  const paymentLabel =
+    paymentType === 'partial' ? 'Pay 25% Now' :
+    paymentType === 'remaining' ? 'Pay Remaining 75%' :
+    'Pay 100% Now';
+
+  const paymentBadge =
+    paymentType === 'partial' ? { label: 'POPULAR', color: '#22c55e' } :
+    paymentType === 'remaining' ? { label: 'REQUIRED', color: '#ef4444' } :
+    null;
+
+  const paymentDesc =
+    paymentType === 'partial' ? 'Reserve your booking with just 25% now. Pay the remaining 75% anytime before pickup/check-in.' :
+    paymentType === 'remaining' ? 'Complete your remaining 75% balance to confirm your booking.' :
+    'Complete full payment now. No remaining balance after this.';
 
   return (
     <SafeAreaView style={styles.fullContainer} edges={['top']}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Complete Your Payment</Text>
         <Text style={styles.headerSub}>Secure payment powered by Razorpay</Text>
       </View>
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Payment Summary Card */}
+        {/* Payment Option Card */}
+        <View style={[styles.optionCard, paymentType === 'partial' && styles.optionCardPopular]}>
+          <View style={styles.optionHeader}>
+            <View style={styles.optionRadioFilled} />
+            <Text style={styles.optionTitle}>{paymentLabel}</Text>
+            {paymentBadge && (
+              <View style={[styles.optionBadge, { backgroundColor: paymentBadge.color }]}>
+                <Text style={styles.optionBadgeText}>{paymentBadge.label}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.optionDesc}>{paymentDesc}</Text>
+          <Text style={styles.optionAmount}>₹{amountInRupees.toLocaleString()}</Text>
+        </View>
+
+        {/* Summary Card */}
         <View style={styles.summaryCard}>
           <Text style={styles.cardTitle}>Payment Summary</Text>
-
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Payment Type</Text>
-            <Text style={styles.summaryValue}>{paymentType === 'partial' ? '25% Advance' : paymentType === 'remaining' ? 'Remaining Balance' : 'Full Payment'}</Text>
+            <Text style={styles.summaryValue}>{paymentLabel}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Amount</Text>
-            <Text style={styles.summaryAmount}>₹{amountInRupees}</Text>
+            <Text style={styles.summaryLabel}>Amount to Pay</Text>
+            <Text style={styles.summaryAmount}>₹{amountInRupees.toLocaleString()}</Text>
           </View>
           {paymentType === 'partial' && (
             <View style={styles.noteBox}>
               <Ionicons name="information-circle-outline" size={14} color="#f47b20" />
-              <Text style={styles.noteText}>
-                Remaining 75% is due on pickup/check-in
-              </Text>
+              <Text style={styles.noteText}>Remaining 75% is due on pickup/check-in</Text>
             </View>
           )}
         </View>
@@ -239,19 +283,19 @@ export default function PaymentProcessingScreen() {
           <Ionicons name="shield-checkmark" size={20} color="#22c55e" />
           <View style={styles.secureText}>
             <Text style={styles.secureTitle}>Secure Payment</Text>
-            <Text style={styles.secureSub}>All transactions encrypted via Razorpay</Text>
+            <Text style={styles.secureSub}>All transactions encrypted and secured by Razorpay</Text>
           </View>
         </View>
       </ScrollView>
 
-      {/* Pay Button */}
+      {/* Bottom Pay Bar */}
       <View style={styles.bottomBar}>
         <View>
           <Text style={styles.payLabel}>Pay Now</Text>
-          <Text style={styles.payAmount}>₹{amountInRupees}</Text>
+          <Text style={styles.payAmount}>₹{amountInRupees.toLocaleString()}</Text>
         </View>
         <Button
-          title={`Pay ₹${amountInRupees}`}
+          title={`Pay ₹${amountInRupees.toLocaleString()}`}
           onPress={openRazorpay}
           style={styles.payBtn}
         />
@@ -278,8 +322,28 @@ const styles = StyleSheet.create({
   errorTitle: { fontSize: 20, fontWeight: '700', color: '#1a1a1a' },
   errorMsg: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 20 },
   actionBtn: { width: '100%' },
+  // ── Option card ──
+  optionCard: {
+    backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12,
+    borderWidth: 2, borderColor: '#e5e5e5',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06, shadowRadius: 4, elevation: 1,
+  },
+  optionCardPopular: { borderColor: '#f47b20', backgroundColor: '#fff8f3' },
+  optionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  optionRadioFilled: {
+    width: 18, height: 18, borderRadius: 9,
+    borderWidth: 2, borderColor: '#f47b20', backgroundColor: '#f47b20',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  optionTitle: { fontSize: 15, fontWeight: '700', color: '#1a1a1a', flex: 1 },
+  optionBadge: { borderRadius: 4, paddingHorizontal: 7, paddingVertical: 2 },
+  optionBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
+  optionDesc: { fontSize: 12, color: '#666', lineHeight: 17, marginBottom: 10, marginLeft: 26 },
+  optionAmount: { fontSize: 26, fontWeight: '800', color: '#f47b20', marginLeft: 26 },
+
   summaryCard: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 16,
+    backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06, shadowRadius: 4, elevation: 1,
   },
@@ -289,7 +353,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f5f5f5',
   },
   summaryLabel: { fontSize: 14, color: '#666' },
-  summaryValue: { fontSize: 14, fontWeight: '500', color: '#1a1a1a', textTransform: 'capitalize' },
+  summaryValue: { fontSize: 14, fontWeight: '500', color: '#1a1a1a' },
   summaryAmount: { fontSize: 20, fontWeight: '800', color: '#f47b20' },
   noteBox: {
     flexDirection: 'row', alignItems: 'center', gap: 6,

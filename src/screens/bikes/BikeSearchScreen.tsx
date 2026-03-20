@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
@@ -28,9 +29,15 @@ import { useCartStore } from '../../stores/cartStore';
 type Nav = StackNavigationProp<MainStackParamList, 'BikeSearch'>;
 type Route = RouteProp<MainStackParamList, 'BikeSearch'>;
 
-// Mirrors web's getPricingOptions
+// ─── Pricing helpers ──────────────────────────────────────────────────────────
 const getPricingOptions = (bike: Bike) => {
-  const options: { type: 'limited' | 'unlimited'; price: number; kmLimit: number | string; label: string; duration: string }[] = [];
+  const options: {
+    type: 'limited' | 'unlimited';
+    price: number;
+    kmLimit: number | string;
+    label: string;
+    duration: string;
+  }[] = [];
   if (bike?.priceLimited?.breakdown) {
     const kmLimit = bike.pricePerDay?.weekday?.limitedKm?.kmLimit ?? 60;
     options.push({
@@ -67,6 +74,80 @@ const formatTimeDisplay = (t: string) => {
   return `${hr}:${String(m).padStart(2, '0')} ${ampm}`;
 };
 
+/** 3-tier availability colour: green >5, amber 1-5, red 0 */
+const getAvailabilityColor = (qty: number) => {
+  if (qty > 5) return '#22c55e';
+  if (qty >= 1) return '#f59e0b';
+  return '#ef4444';
+};
+
+const getAvailabilityText = (qty: number) => {
+  if (qty > 5) return `${qty} available`;
+  if (qty >= 1) return `${qty} left`;
+  return 'Currently unavailable';
+};
+
+/** Format "2026-03-21 20:30" → "Mar 21 · 8:30 PM" */
+const formatNextAvailable = (next: string): string => {
+  try {
+    const [date, time] = next.split(' ');
+    const d = new Date(`${date}T${time}:00`);
+    const dateStr = d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+    const h = d.getHours();
+    const m = d.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hr = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    const timeStr = `${hr}:${String(m).padStart(2, '0')} ${ampm}`;
+    return `${dateStr} · ${timeStr}`;
+  } catch {
+    return next;
+  }
+};
+
+// ─── Skeleton Card ────────────────────────────────────────────────────────────
+function BikeCardSkeleton() {
+  const shimmer = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmer, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(shimmer, { toValue: 0, duration: 900, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+  const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.45, 1] });
+
+  return (
+    <Animated.View style={[skStyles.card, { opacity }]}>
+      <View style={skStyles.image} />
+      <View style={skStyles.body}>
+        <View style={skStyles.title} />
+        <View style={skStyles.sub} />
+        <View style={skStyles.pillRow}>
+          <View style={skStyles.pill} />
+          <View style={[skStyles.pill, { width: 80 }]} />
+        </View>
+        <View style={skStyles.price} />
+      </View>
+    </Animated.View>
+  );
+}
+
+const skStyles = StyleSheet.create({
+  card: {
+    backgroundColor: '#fff', borderRadius: 16, marginBottom: 12,
+    overflow: 'hidden', borderWidth: 1, borderColor: '#f0f0f0',
+  },
+  image: { width: '100%', height: 160, backgroundColor: '#f0f0f0' },
+  body: { padding: 14, gap: 10 },
+  title: { height: 16, backgroundColor: '#e8e8e8', borderRadius: 6, width: '70%' },
+  sub: { height: 12, backgroundColor: '#e8e8e8', borderRadius: 6, width: '45%' },
+  pillRow: { flexDirection: 'row', gap: 8 },
+  pill: { height: 28, width: 100, backgroundColor: '#e8e8e8', borderRadius: 20 },
+  price: { height: 24, backgroundColor: '#e8e8e8', borderRadius: 6, width: '30%', marginTop: 4 },
+});
+
+// ─── Bike Card ────────────────────────────────────────────────────────────────
 function BikeCard({
   bike,
   searchParams,
@@ -88,6 +169,8 @@ function BikeCard({
   const selectedOption = pricingOptions.find(o => o.type === selectedType) ?? pricingOptions[0];
   const isAvailable = bike.availableQuantity > 0;
   const maxQty = Math.min(bike.availableQuantity, 10);
+  const availColor = getAvailabilityColor(bike.availableQuantity);
+  const extraCharges = bike.extraAmount ?? 0;
 
   const addToCartMutation = useMutation({
     mutationFn: () =>
@@ -150,16 +233,31 @@ function BikeCard({
 
   return (
     <View style={styles.card}>
-      {/* Image */}
+      {/* Image area */}
       <View style={styles.imageWrapper}>
         <Image
           source={{ uri: bike.images?.[0] ?? 'https://via.placeholder.com/400x200' }}
           style={styles.bikeImage}
           resizeMode="contain"
         />
+        {/* Zero Deposit badge */}
         <View style={styles.zeroBadge}>
           <Text style={styles.zeroBadgeText}>Zero Deposit</Text>
         </View>
+        {/* Unavailable overlay */}
+        {!isAvailable && (
+          <View style={styles.unavailableOverlay}>
+            <Ionicons name="time-outline" size={18} color="#fff" />
+            <View>
+              <Text style={styles.unavailableOverlayText}>Currently Unavailable</Text>
+              {!!bike.nextAvailable && (
+                <Text style={styles.unavailableOverlaySub}>
+                  Next: {formatNextAvailable(bike.nextAvailable)}
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
       </View>
 
       <View style={styles.cardBody}>
@@ -167,13 +265,31 @@ function BikeCard({
         <Text style={styles.bikeTitle}>{bike.title}</Text>
         <Text style={styles.bikeSubtitle}>{bike.brand} • {bike.model} • {bike.year}</Text>
 
-        {/* Availability */}
+        {/* Availability row */}
         <View style={styles.availRow}>
-          <View style={[styles.dot, { backgroundColor: isAvailable ? '#22c55e' : '#ef4444' }]} />
-          <Text style={styles.availText}>
-            {isAvailable ? `${bike.availableQuantity} available` : 'Currently unavailable'}
+          <View style={[styles.dot, { backgroundColor: availColor }]} />
+          <Text style={[styles.availText, { color: availColor }]}>
+            {getAvailabilityText(bike.availableQuantity)}
           </Text>
         </View>
+
+        {/* Next available banner (only when unavailable + API provides the date) */}
+        {!isAvailable && !!bike.nextAvailable && (
+          <View style={styles.nextAvailBanner}>
+            <Ionicons name="calendar-outline" size={13} color="#7c3aed" />
+            <Text style={styles.nextAvailText}>
+              Available from {formatNextAvailable(bike.nextAvailable)}
+            </Text>
+          </View>
+        )}
+
+        {/* Extra charge info */}
+        {extraCharges > 0 && (
+          <View style={styles.extraChargeBox}>
+            <Ionicons name="information-circle-outline" size={13} color="#f47b20" />
+            <Text style={styles.extraChargeText}>+₹{extraCharges} extra charges apply</Text>
+          </View>
+        )}
 
         {/* Plan Selector */}
         {pricingOptions.length > 0 && (
@@ -267,6 +383,7 @@ function BikeCard({
   );
 }
 
+// ─── Main Screen ─────────────────────────────────────────────────────────────
 export default function BikeSearchScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
@@ -335,7 +452,7 @@ export default function BikeSearchScreen() {
         </View>
         <TouchableOpacity
           style={styles.filterBtn}
-          onPress={() => navigation.navigate('Search')}
+          onPress={() => navigation.goBack()}
           accessibilityLabel="Change search filters"
         >
           <Ionicons name="options-outline" size={20} color="#1a1a1a" />
@@ -345,15 +462,19 @@ export default function BikeSearchScreen() {
       {/* Disclaimer */}
       <View style={styles.disclaimer}>
         <Text style={styles.disclaimerText}>
-          *All prices are exclusive of taxes and fuel. Images used for representation purposes only, actual prices may vary.
+          *All prices are exclusive of taxes and fuel. Images used for representation purposes only.
         </Text>
       </View>
 
       {/* Content */}
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#f47b20" />
-        </View>
+        <FlatList
+          data={[1, 2, 3, 4, 5, 6]}
+          keyExtractor={item => String(item)}
+          contentContainerStyle={styles.list}
+          renderItem={() => <BikeCardSkeleton />}
+          scrollEnabled={false}
+        />
       ) : isError ? (
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
@@ -395,14 +516,11 @@ export default function BikeSearchScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
 
-  // Header
+  // ── Header ──
   header: {
     backgroundColor: '#f47b20',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 10,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 12, paddingVertical: 12, gap: 10,
   },
   backBtn: { padding: 4 },
   headerCenter: { flex: 1, alignItems: 'center' },
@@ -416,7 +534,7 @@ const styles = StyleSheet.create({
   },
   cartBadgeText: { color: '#f47b20', fontSize: 9, fontWeight: '800' },
 
-  // Date strip
+  // ── Date strip ──
   dateStrip: {
     backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 14, paddingVertical: 10,
@@ -433,7 +551,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#e5e5e5',
   },
 
-  // Disclaimer
+  // ── Disclaimer ──
   disclaimer: {
     backgroundColor: '#eff6ff', marginHorizontal: 10, marginTop: 8,
     borderRadius: 8, padding: 10,
@@ -441,8 +559,7 @@ const styles = StyleSheet.create({
   },
   disclaimerText: { fontSize: 11, color: '#1d4ed8', lineHeight: 15 },
 
-  // Loading/Error
-  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  // ── Loading/Error ──
   errorContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },
   errorText: { fontSize: 16, color: '#666' },
   retryBtn: { backgroundColor: '#f47b20', borderRadius: 8, paddingHorizontal: 20, paddingVertical: 10 },
@@ -450,7 +567,7 @@ const styles = StyleSheet.create({
 
   list: { padding: 10, paddingBottom: 32 },
 
-  // Bike Card
+  // ── Bike Card ──
   card: {
     backgroundColor: '#fff', borderRadius: 16, marginBottom: 12,
     overflow: 'hidden',
@@ -466,26 +583,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 3,
   },
   zeroBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  unavailableOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center', justifyContent: 'center', gap: 6,
+    flexDirection: 'row', paddingHorizontal: 12,
+  },
+  unavailableOverlayText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  unavailableOverlaySub: { color: '#fde68a', fontSize: 11, fontWeight: '500', marginTop: 2 },
+
+  nextAvailBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#f5f3ff', borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 7,
+    borderWidth: 1, borderColor: '#ddd6fe', marginBottom: 8,
+  },
+  nextAvailText: { fontSize: 12, color: '#7c3aed', fontWeight: '600', flex: 1 },
+
   cardBody: { padding: 14 },
   bikeTitle: { fontSize: 16, fontWeight: '800', color: '#1a1a1a', marginBottom: 2 },
   bikeSubtitle: { fontSize: 12, color: '#666', marginBottom: 8, fontWeight: '600' },
-  availRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  availText: { fontSize: 12, color: '#555', fontWeight: '500' },
 
-  // Plan selector
+  // ── Availability ──
+  availRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  availText: { fontSize: 12, fontWeight: '600' },
+
+  // ── Extra Charge info ──
+  extraChargeBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#fff5ed', borderRadius: 6, padding: 7, marginBottom: 10,
+    borderWidth: 1, borderColor: '#ffd4a8',
+  },
+  extraChargeText: { fontSize: 11, color: '#f47b20', fontWeight: '600' },
+
+  // ── Plan selector ──
   planLabel: { fontSize: 10, fontWeight: '700', color: '#999', letterSpacing: 0.8, marginBottom: 8, textAlign: 'center' },
   planRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   planBtn: {
     flex: 1, paddingVertical: 8, borderRadius: 20,
-    backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#e0e0e0',
-    alignItems: 'center',
+    backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#e0e0e0', alignItems: 'center',
   },
   planBtnActive: { backgroundColor: '#f47b20', borderColor: '#f47b20' },
   planBtnText: { fontSize: 13, fontWeight: '700', color: '#555' },
   planBtnTextActive: { color: '#fff' },
 
-  // CTA row (qty + add to cart)
+  // ── CTA row ──
   ctaRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
   qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   qtyBtn: {
@@ -504,7 +647,7 @@ const styles = StyleSheet.create({
   addToCartText: { color: '#f47b20', fontWeight: '700', fontSize: 13 },
   maxQtyNote: { fontSize: 11, color: '#f47b20', marginBottom: 6 },
 
-  // Price + Book Now
+  // ── Price row ──
   priceRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 10, marginTop: 4,

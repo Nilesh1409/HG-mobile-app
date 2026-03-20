@@ -220,7 +220,27 @@ export default function CartScreen() {
 
         {/* Special Offer Banner */}
         {bikeItems.length > 0 && hostelItems.length === 0 && (
-          <TouchableOpacity style={styles.specialOffer} onPress={() => {}}>
+          <TouchableOpacity
+            style={styles.specialOffer}
+            onPress={() => {
+              if (bikeDates?.startDate && bikeDates?.endDate) {
+                const checkOutDate = new Date(bikeDates.endDate);
+                checkOutDate.setDate(checkOutDate.getDate() + 1);
+                const checkOut = checkOutDate.toISOString().split('T')[0];
+                (navigation as any).navigate('HostelTab', {
+                  screen: 'HostelSearch',
+                  params: {
+                    location: 'Chikkamagaluru',
+                    checkIn: bikeDates.startDate,
+                    checkOut,
+                    stayType: 'hostel',
+                  },
+                });
+              } else {
+                (navigation as any).navigate('HostelTab');
+              }
+            }}
+          >
             <View style={styles.specialOfferIcon}>
               <Ionicons name="bed-outline" size={28} color="#fff" />
             </View>

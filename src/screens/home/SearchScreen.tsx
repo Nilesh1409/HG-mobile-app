@@ -49,16 +49,18 @@ export default function SearchScreen() {
 
   const handleSearch = () => {
     if (tab === 'bikes') {
-      navigation.navigate('BikeSearch', {
-        startDate: formatDate(startDate),
-        endDate: formatDate(endDate),
-        startTime,
-        endTime,
-        location,
+      (navigation as any).navigate('HomeTab', {
+        screen: 'BikeSearch',
+        params: {
+          startDate: formatDate(startDate),
+          endDate: formatDate(endDate),
+          startTime,
+          endTime,
+          location,
+        },
       });
     } else {
-      // Navigate to hostel tab
-      navigation.navigate('MainTabs' as never);
+      (navigation as any).navigate('HostelTab');
     }
   };
 

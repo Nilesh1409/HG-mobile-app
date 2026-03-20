@@ -55,7 +55,10 @@ export default function ExploreScreen() {
           renderItem={({ item }) => (
             <HostelCard
               hostel={item}
-              onPress={() => navigation.navigate('HostelDetail', { hostelId: item._id })}
+              onPress={() => (navigation as any).navigate('MainTabs', {
+                screen: 'HostelTab',
+                params: { screen: 'HostelDetail', params: { hostelId: item._id } },
+              })}
             />
           )}
           ListEmptyComponent={
